@@ -1,5 +1,6 @@
 import os
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi.security.api_key import APIKeyHeader
 from fastapi.responses import HTMLResponse
 from supabase import create_client, Client
 from pydantic import BaseModel, Field
@@ -11,9 +12,20 @@ load_dotenv()
 # --- CONFIGURACIÓN ---
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-MASTER_KEY = os.getenv("MASTER_KEY", "Agro2024") # Clave secreta para registrar
+MASTER_KEY = os.getenv("MASTER_KEY") # Clave secreta para registrar obligatoria
+
+if not MASTER_KEY:
+    print("ADVERTENCIA: MASTER_KEY no está configurada, usando 'Agro2024' por defecto (Por favor configúrala en Vercel)")
+    MASTER_KEY = "Agro2024"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+api_key_header_scheme = APIKeyHeader(name="x-api-key", auto_error=False)
+
+def get_api_key(api_key_header: str = Security(api_key_header_scheme)):
+    if api_key_header == MASTER_KEY:
+        return api_key_header
+    raise HTTPException(status_code=403, detail="No autorizado.")
 
 app = FastAPI(
     title="🌱 ECO_STREAM BIOTECH",
@@ -80,11 +92,8 @@ async def custom_docs():
 @app.post("/registrar-total", tags=["Privado"], summary="🔐 Registro Solo Admin")
 async def registrar_total(
     datos: RegistroPlantaCompleto, 
-    x_api_key: str = Header(None, description="Clave maestra para autorizar el registro")
+    api_key: str = Depends(get_api_key)
 ):
-    if x_api_key != MASTER_KEY:
-        raise HTTPException(status_code=403, detail="No autorizado.")
-
     try:
         planta_dict = datos.model_dump(exclude={'especificaciones'})
         res_planta = supabase.table("plantas").insert(planta_dict).execute()
