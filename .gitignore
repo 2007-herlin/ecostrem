@@ -1,0 +1,24 @@
+# Entornos de Ejecución
+.env
+
+# Archivos de caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Entornos Virtuales
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Integración con Vercel
+.vercel/
+
+# Editores y SO
+.vscode/
+.idea/
+*.swp
+.DS_Store
